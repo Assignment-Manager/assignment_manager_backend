@@ -363,7 +363,7 @@ exports.submitSolution = asyncHandler(async (req, res) => {
   } catch (err) {
     await session.abortTransaction();
     session.endSession();
-    throw err; // handled by your asyncHandler
+    throw err; 
   }
 });
 

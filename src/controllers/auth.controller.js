@@ -4,66 +4,114 @@ const User = require("../models/User");
 const asyncHandler = require("../utils/asyncHandler");
 const { sendAndSaveNotification } = require("../utils/pushSender");
 const nodemailer = require("nodemailer");
+const Joi = require("joi");
+// password pattern requested
+const passwordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,25}$/;
+
+// Joi schemas
+const registerSchema = Joi.object({
+  firstname: Joi.string().trim().min(1).max(100).required(),
+  lastname: Joi.string().trim().min(1).max(100).required(),
+  email: Joi.string().trim().lowercase().email().required(),
+  password: Joi.string().pattern(passwordPattern).required().messages({
+    "string.pattern.base":
+      "Password must be 8–25 characters and include uppercase, lowercase, a number and a special character.",
+  }),
+  role: Joi.string().valid("user", "admin").optional(),
+});
+
+const loginSchema = Joi.object({
+  email: Joi.string().trim().lowercase().email().required(),
+  password: Joi.string().required(),
+});
 
 exports.register = asyncHandler(async (req, res) => {
-  const { firstname, lastname, email, password, role } = req.body;
-  if (!firstname || !lastname || !email || !password)
-    return res.status(400).json({ message: "Missing fields" });
+  // validate request body with Joi
+  try {
+    // validateAsync will throw a ValidationError on invalid input
+    const value = await registerSchema.validateAsync(req.body, {
+      abortEarly: false,
+    });
 
-  let existing = await User.findOne({ email });
-  if (existing)
-    return res.status(400).json({ message: "Email already registered" });
+    const { firstname, lastname, email, password, role } = value;
 
-  const passwordHash = await bcrypt.hash(password, 10);
-  const user = await User.create({
-    firstname,
-    lastname,
-    email,
-    passwordHash,
-    role: role || "user",
-  });
+    // existing DB checks + creation
+    let existing = await User.findOne({ email });
+    if (existing)
+      return res.status(400).json({ message: "Email already registered" });
 
-  // notify admins about new user
-  const admins = await User.find({ role: "admin" }).select("_id");
-  const adminIds = admins.map((a) => a._id);
-  await sendAndSaveNotification({
-    toUserIds: adminIds,
-    title: "New user registered",
-    message: `${user.firstname} ${user.lastname} registered.`,
-    type: "new_user",
-    relatedTaskId: null,
-  });
+    const passwordHash = await bcrypt.hash(password, 10);
+    const user = await User.create({
+      firstname,
+      lastname,
+      email,
+      passwordHash,
+      role: role || "user",
+    });
 
-  res.status(201).json({ message: "User registered", data: user });
+    // notify admins about new user
+    const admins = await User.find({ role: "admin" }).select("_id");
+    const adminIds = admins.map((a) => a._id);
+    await sendAndSaveNotification({
+      toUserIds: adminIds,
+      title: "New user registered",
+      message: `${user.firstname} ${user.lastname} registered.`,
+      type: "new_user",
+      relatedTaskId: null,
+    });
+
+    res.status(201).json({ message: "User registered", data: user });
+  } catch (err) {
+    // Joi validation error
+    if (err && err.isJoi) {
+      const details = err.details
+        ? err.details.map((d) => d.message)
+        : [err.message];
+      return res.status(400).json({ message: "Validation failed", details });
+    }
+    // rethrow to asyncHandler global error middleware
+    throw err;
+  }
 });
 
 exports.login = asyncHandler(async (req, res) => {
-  const { email, password } = req.body;
-  if (!email || !password)
-    return res.status(400).json({ message: "Missing email/password" });
+  try {
+    const value = await loginSchema.validateAsync(req.body, {
+      abortEarly: false,
+    });
+    const { email, password } = value;
 
-  const user = await User.findOne({ email });
-  if (!user) return res.status(401).json({ message: "Invalid credentials" });
+    const user = await User.findOne({ email });
+    if (!user) return res.status(401).json({ message: "Invalid credentials" });
 
-  const ok = await bcrypt.compare(password, user.passwordHash);
-  if (!ok) return res.status(401).json({ message: "Invalid credentials" });
+    const ok = await bcrypt.compare(password, user.passwordHash);
+    if (!ok) return res.status(401).json({ message: "Invalid credentials" });
 
-  const token = jwt.sign(
-    { id: user._id, role: user.role },
-    process.env.JWT_SECRET,
-    { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
-  );
+    const token = jwt.sign(
+      { id: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
+    );
 
-  res.json({
-    token,
-    user: {
-      id: user._id,
-      firstname: user.firstname,
-      lastname: user.lastname,
-      email: user.email,
-      role: user.role,
-    },
-  });
+    res.json({
+      token,
+      user: {
+        id: user._id,
+        firstname: user.firstname,
+        lastname: user.lastname,
+        email: user.email,
+        role: user.role,
+      },
+    });
+  } catch (err) {
+    if (err && err.isJoi) {
+      const details = err.details
+        ? err.details.map((d) => d.message)
+        : [err.message];
+      return res.status(400).json({ message: "Validation failed", details });
+    }
+    throw err;
+  }
 });
 
 exports.logout = asyncHandler(async (req, res) => {
