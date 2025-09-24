@@ -5,9 +5,8 @@ const authenticate = require("../middleware/auth.middleware");
 
 // routes
 router.post("/register", authCtrl.register);
-router.get("/me", authenticate, async (req, res) => {
-  res.json({ user: req.user });
-});
+router.get("/me", authenticate, authCtrl.getProfile);
+
 router.post("/login", authCtrl.login);
 router.post("/logout", authCtrl.logout);
 router.get("/all-user", authCtrl.allUsers);

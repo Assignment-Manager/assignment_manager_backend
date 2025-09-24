@@ -7,10 +7,8 @@ const notificationsRoutes = require("./routes/notifications.routes");
 const fcmRoutes = require("./routes/fcm.routes");
 const testRoutes = require("./routes/test");
 const errorHandler = require("./middleware/error.middleware");
-const morgan = require("morgan");
 
 const app = express();
-app.use(morgan("dev"));
 
 // --- CORS setup ---
 const FRONTEND_URLS = process.env.FRONTEND_URLS || "";

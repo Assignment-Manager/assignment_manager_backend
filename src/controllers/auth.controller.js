@@ -198,3 +198,8 @@ exports.resetPassword = asyncHandler(async (req, res) => {
 
   res.json({ message: "Password reset successful" });
 });
+exports.getProfile = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.user._id).select("-passwordHash");
+  if (!user) return res.status(404).json({ message: "User not found" });
+  res.json({ user });
+});

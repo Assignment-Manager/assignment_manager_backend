@@ -3,6 +3,13 @@ const User = require("../models/User");
 
 exports.saveToken = asyncHandler(async (req, res) => {
   const { token } = req.body;
+  console.log(
+    "saveToken called for user:",
+    req.user ? req.user._id : "no-user",
+    "body:",
+    req.body
+  );
+
   if (!token) return res.status(400).json({ message: "No token" });
 
   const user = await User.findById(req.user._id);
