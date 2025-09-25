@@ -59,7 +59,7 @@ exports.createAndSend = asyncHandler(async (req, res) => {
     type,
     relatedTaskId,
   });
-  res.json({ message: "Notifications queued/sent" });
+  res.json({ message: "Notifications sent" });
 });
 
 // PATCH /api/notifications/related/:taskId/mark-deleted

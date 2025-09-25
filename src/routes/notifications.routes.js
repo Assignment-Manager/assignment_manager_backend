@@ -19,4 +19,5 @@ router.delete(
   requireRole("admin"),
   notifCtrl.deleteRelatedNotifications
 );
+router.post("/create-and-send", requireRole("admin"), notifCtrl.createAndSend);
 module.exports = router;

@@ -354,7 +354,7 @@ exports.submitSolution = asyncHandler(async (req, res) => {
       title: "Task Submission",
       message: `${req.user.firstname || ""} ${
         req.user.lastname || ""
-      } submitted/updated solution for "${task.title}".`,
+      } submitted solution for "${task.title}".`,
       type: "TASK_SUBMISSION",
       relatedTaskId: task._id,
     });
@@ -363,7 +363,7 @@ exports.submitSolution = asyncHandler(async (req, res) => {
   } catch (err) {
     await session.abortTransaction();
     session.endSession();
-    throw err; 
+    throw err;
   }
 });
 
