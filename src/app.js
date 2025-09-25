@@ -9,15 +9,29 @@ const testRoutes = require("./routes/test");
 const errorHandler = require("./middleware/error.middleware");
 
 const app = express();
+app.use((req, res, next) => {
+  console.log("Incoming Origin:", req.headers.origin);
+  next();
+});
 
 // --- CORS setup ---
+// Read FRONTEND_URLS from env and normalise to hostnames
 const FRONTEND_URLS = process.env.FRONTEND_URLS || "";
-const allowedFromEnv = new Set(
+const allowedHostnames = new Set(
   FRONTEND_URLS.split(",")
     .map((s) => s.trim())
     .filter(Boolean)
+    .map((u) => {
+      try {
+        return new URL(u).hostname;
+      } catch (e) {
+        // if it's not a valid URL, keep the original string (fallback)
+        return u;
+      }
+    })
 );
 
+// local dev / LAN regexes (unchanged)
 const localOriginRegex =
   /^https?:\/\/(?:(?:localhost)|(?:127\.0\.0\.1)|(?:\[::1\]))(?::\d+)?$/i;
 const localLanRegex =
@@ -28,7 +42,19 @@ const corsOptions = {
     // allow non-browser tools (curl/postman) - origin is undefined/null
     if (!origin) return callback(null, true);
 
-    if (allowedFromEnv.has(origin)) return callback(null, true);
+    let originHostname;
+    try {
+      originHostname = new URL(origin).hostname;
+    } catch (e) {
+      // invalid origin header
+      console.warn("CORS: invalid origin header:", origin);
+      return callback(new Error("CORS Error: Not allowed by CORS"));
+    }
+
+    // allow if hostname matches any allowed hostname from env
+    if (allowedHostnames.has(originHostname)) return callback(null, true);
+
+    // allow local dev origins
     if (localOriginRegex.test(origin)) return callback(null, true);
     if (localLanRegex.test(origin)) return callback(null, true);
 
