@@ -9,10 +9,6 @@ const testRoutes = require("./routes/test");
 const errorHandler = require("./middleware/error.middleware");
 
 const app = express();
-app.use((req, res, next) => {
-  console.log("Incoming Origin:", req.headers.origin);
-  next();
-});
 
 // --- CORS setup ---
 // Read FRONTEND_URLS from env and normalise to hostnames
