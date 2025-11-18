@@ -2,7 +2,6 @@ const admin = require("firebase-admin");
 const Notification = require("../models/Notification");
 const User = require("../models/User");
 
-// init firebase-admin externally (see server.js)
 const sendAndSaveNotification = async ({
   toUserIds = [],
   title,
@@ -11,11 +10,10 @@ const sendAndSaveNotification = async ({
   relatedTaskId,
   data = {},
 }) => {
-  // save notifications and send FCM push
   const users = await User.find({ _id: { $in: toUserIds } });
 
   const tokens = users.flatMap((u) => u.fcmTokens || []);
-  // Create DB notifications
+
   const notifications = users.map((u) => ({
     userId: u._id,
     title,
@@ -23,6 +21,7 @@ const sendAndSaveNotification = async ({
     type,
     relatedTaskId,
   }));
+
   await Notification.insertMany(notifications);
 
   if (tokens.length === 0) {
@@ -48,7 +47,6 @@ const sendAndSaveNotification = async ({
     };
   } catch (err) {
     console.error("FCM push failed:", err.message);
-    // Return the DB notifications but mark push as failed
     return {
       saved: notifications.length,
       pushed: 0,
@@ -58,5 +56,3 @@ const sendAndSaveNotification = async ({
 };
 
 module.exports = { sendAndSaveNotification };
-
-
