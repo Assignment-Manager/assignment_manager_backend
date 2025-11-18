@@ -24,6 +24,7 @@ if (process.env.FIREBASE_SERVICE_ACCOUNT_B64) {
 
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
+      projectId: serviceAccount.project_id,
     });
 
     console.log("✅ Firebase admin initialized from env variable");
