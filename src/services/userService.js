@@ -5,7 +5,7 @@ exports.getAllUsers = async () => {
   const users = await User.find({ role: { $ne: "admin" } }).select(
     "-passwordHash"
   );
-  return { users };
+  return { users, total: users.length };
 };
 
 exports.createUserByAdmin = async ({

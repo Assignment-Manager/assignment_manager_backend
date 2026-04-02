@@ -8,6 +8,7 @@ router.use(auth);
 
 router.get("/", notifCtrl.getNotifications);
 router.patch("/:id/read", notifCtrl.markAsRead);
+router.delete("/:id", notifCtrl.deleteNotification);
 router.patch("/mark-all-read", notifCtrl.markAllAsRead);
 router.patch(
   "/related/:taskId/mark-deleted",

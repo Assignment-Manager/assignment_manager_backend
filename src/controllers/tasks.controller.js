@@ -84,7 +84,7 @@ exports.createTask = asyncHandler(async (req, res) => {
     const toUserIds = assignedToObj.map((a) => a.userId);
     await sendAndSaveNotification({
       toUserIds,
-      title: "New Task Assigned",
+      title: title,
       message: `A new task "${title}" has been assigned to you.`,
       type: "TASK_CREATED",
       relatedTaskId: task._id,
@@ -195,7 +195,7 @@ exports.updateTask = asyncHandler(async (req, res) => {
   if (newlyAddedUserIds.length) {
     await sendAndSaveNotification({
       toUserIds: newlyAddedUserIds,
-      title: "New Task Assigned",
+      title: task.title,
       message: `You have been assigned to task "${task.title}".`,
       type: "TASK_ASSIGNED",
       relatedTaskId: task._id,

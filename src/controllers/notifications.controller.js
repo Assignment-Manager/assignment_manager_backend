@@ -35,6 +35,21 @@ exports.markAsRead = asyncHandler(async (req, res) => {
   res.json({ notification: notif });
 });
 
+// DELETE /api/notifications/:id
+exports.deleteNotification = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  if (!mongoose.Types.ObjectId.isValid(id))
+    return res.status(400).json({ message: "Invalid id" });
+
+  const notif = await Notification.findOneAndDelete({
+    _id: id,
+    userId: req.user._id,
+  });
+
+  if (!notif) return res.status(404).json({ message: "Not found" });
+  res.json({ message: "Notification deleted" });
+});
+
 // PATCH /api/notifications/mark-all-read
 exports.markAllAsRead = asyncHandler(async (req, res) => {
   await Notification.updateMany(
