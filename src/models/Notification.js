@@ -13,4 +13,7 @@ const NotificationSchema = new mongoose.Schema({
   relatedDeletedAt: { type: Date, default: null },
 });
 
+NotificationSchema.index({ userId: 1, createdAt: -1 }, { background: true });
+NotificationSchema.index({ userId: 1, isRead: 1 }, { background: true });
+
 module.exports = mongoose.model("Notification", NotificationSchema);

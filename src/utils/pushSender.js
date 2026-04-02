@@ -39,7 +39,7 @@ const sendAndSaveNotification = async ({
   };
 
   try {
-    const response = await admin.messaging().sendMulticast(messagePayload);
+    const response = await admin.messaging().sendEachForMulticast(messagePayload);
     return {
       saved: notifications.length,
       pushed: response.successCount,
