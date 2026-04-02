@@ -10,6 +10,7 @@ const {
   getAllUsers,
   createUserByAdmin,
   getUserProfile,
+  deleteUser,
 } = require("../services/userService");
 const {
   validateRegister,
@@ -99,6 +100,18 @@ exports.resetPassword = asyncHandler(async (req, res) => {
 exports.getProfile = asyncHandler(async (req, res) => {
   try {
     const result = await getUserProfile(req.user._id);
+    res.json(result);
+  } catch (err) {
+    if (err.message === "User not found")
+      return res.status(404).json({ message: err.message });
+    throw err;
+  }
+});
+
+exports.deleteUser = asyncHandler(async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await deleteUser(id);
     res.json(result);
   } catch (err) {
     if (err.message === "User not found")

@@ -14,4 +14,5 @@ router.get("/all-user", authenticate, requireRole("admin"), authCtrl.allUsers);
 router.post("/add-user", authCtrl.createUserByAdmin);
 router.post("/forgot-password", authCtrl.forgotPassword);
 router.post("/reset-password", authCtrl.resetPassword);
+router.delete("/delete-user/:id", authenticate, requireRole("admin"), authCtrl.deleteUser);
 module.exports = router;

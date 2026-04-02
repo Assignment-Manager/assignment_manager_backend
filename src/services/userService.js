@@ -40,3 +40,9 @@ exports.getUserProfile = async (userId) => {
   if (!user) throw new Error("User not found");
   return { user };
 };
+
+exports.deleteUser = async (userId) => {
+  const user = await User.findByIdAndDelete(userId);
+  if (!user) throw new Error("User not found");
+  return { message: "User deleted successfully" };
+};
