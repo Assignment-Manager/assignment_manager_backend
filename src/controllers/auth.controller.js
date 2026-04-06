@@ -5,6 +5,7 @@ const {
   logoutUser,
   forgotPassword,
   resetPassword,
+  socialLoginUser,
 } = require("../services/authService");
 const {
   getAllUsers,
@@ -39,6 +40,17 @@ exports.login = asyncHandler(async (req, res) => {
     if (err.message === "Invalid credentials")
       return res.status(401).json({ message: err.message });
     throw err;
+  }
+});
+
+exports.socialLogin = asyncHandler(async (req, res) => {
+  try {
+    const { idToken } = req.body;
+    if (!idToken) return res.status(400).json({ message: "ID Token is required" });
+    const result = await socialLoginUser(idToken);
+    res.json(result);
+  } catch (err) {
+    res.status(401).json({ message: err.message || "Social login failed" });
   }
 });
 

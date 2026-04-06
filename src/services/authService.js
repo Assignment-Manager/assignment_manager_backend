@@ -1,5 +1,6 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const admin = require("firebase-admin");
 const User = require("../models/User");
 const { sendAndSaveNotification } = require("../utils/pushSender");
 const { sendEmail } = require("../utils/emailSender");
@@ -115,4 +116,59 @@ exports.resetPassword = async ({ token, password }) => {
   await user.save();
 
   return { message: "Password reset successful" };
+};
+
+exports.socialLoginUser = async (idToken) => {
+  try {
+    const decodedToken = await admin.auth().verifyIdToken(idToken);
+    const { email, name, picture } = decodedToken;
+
+    let user = await User.findOne({ email });
+
+    if (!user) {
+      // Create a new user if it doesn't exist
+      const names = name ? name.split(" ") : ["User", ""];
+      user = await User.create({
+        firstname: names[0],
+        lastname: names.slice(1).join(" ") || " ",
+        email: email,
+        role: "user",
+        profilePicture: picture,
+      });
+
+      // Notify admins
+      const admins = await User.find({ role: "admin" }).select("_id");
+      const adminIds = admins.map((a) => a._id);
+      try {
+        await sendAndSaveNotification({
+          toUserIds: adminIds,
+          title: "New social user registered",
+          message: `${user.firstname} ${user.lastname} registered via social login.`,
+          type: "new_user",
+          relatedTaskId: null,
+        });
+      } catch (e) {
+        console.error("sendAndSaveNotification failed", e);
+      }
+    }
+
+    const token = jwt.sign({ id: user._id, role: user.role }, JWT_SECRET, {
+      expiresIn: JWT_EXPIRES_IN,
+    });
+
+    return {
+      token,
+      user: {
+        id: user._id,
+        firstname: user.firstname,
+        lastname: user.lastname,
+        email: user.email,
+        role: user.role,
+        picture: picture,
+      },
+    };
+  } catch (err) {
+    console.error("Social login verification failed:", err);
+    throw new Error("Invalid social credentials");
+  }
 };

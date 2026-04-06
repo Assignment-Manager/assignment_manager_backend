@@ -10,7 +10,8 @@ const UserSchema = new mongoose.Schema({
     lowercase: true,
     trim: true,
   },
-  passwordHash: { type: String, required: true },
+  passwordHash: { type: String }, // Optional for social users
+  profilePicture: { type: String },
   role: { type: String, enum: ["admin", "user"], default: "user" },
   fcmTokens: [{ type: String }],
   createdAt: { type: Date, default: Date.now },

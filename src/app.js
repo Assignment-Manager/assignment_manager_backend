@@ -6,9 +6,14 @@ const tasksRoutes = require("./routes/tasks.routes");
 const notificationsRoutes = require("./routes/notifications.routes");
 const fcmRoutes = require("./routes/fcm.routes");
 const testRoutes = require("./routes/test");
+const swaggerUi = require("swagger-ui-express");
+const swaggerSpecs = require("./config/swagger");
 const errorHandler = require("./middleware/error.middleware");
 
 const app = express();
+
+// --- Swagger setup ---
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
 
 // --- CORS setup ---
 // Read FRONTEND_URLS from env and normalise to hostnames
@@ -78,6 +83,16 @@ app.use("/api/fcm", fcmRoutes);
 app.use("/api", testRoutes);
 
 // Health check
+/**
+ * @swagger
+ * /health:
+ *   get:
+ *     summary: System health check
+ *     tags: [Testing]
+ *     responses:
+ *       200:
+ *         description: Operational status
+ */
 app.get("/api/health", (req, res) =>
   res.json({ message: "server is operational", status: "ok" })
 );

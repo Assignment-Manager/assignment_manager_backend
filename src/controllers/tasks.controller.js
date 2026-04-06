@@ -148,50 +148,68 @@ exports.updateTask = asyncHandler(async (req, res) => {
     updates.adminFileUrl = result.secure_url;
   }
 
-  // If assignedTo provided, normalize and MERGE with existing assignedTo (preserve isCompleted)
   let newlyAddedUserIds = [];
-  if ("assignedTo" in updates) {
-    const normalized = normalizeAssignedToInput(updates.assignedTo); // [{userId,...},...]
-    // Load current task to merge
-    const existing = await Task.findById(id).select("assignedTo title").lean();
-    if (!existing) return res.status(404).json({ message: "Task not found" });
 
-    const existingMap = new Map(); // userId -> {isCompleted, completedAt}
-    (existing.assignedTo || []).forEach((a) => {
-      const uid = a.userId ? a.userId.toString() : null;
-      if (uid)
-        existingMap.set(uid, {
-          isCompleted: !!a.isCompleted,
-          completedAt: a.completedAt || null,
-        });
+  // Handle assignedTo safely
+  if ("assignedTo" in updates) {
+    const normalized = normalizeAssignedToInput(updates.assignedTo);
+
+    const existingTask = await Task.findById(id);
+    if (!existingTask) {
+      return res.status(404).json({ message: "Task not found" });
+    }
+
+    const existingAssigned = existingTask.assignedTo || [];
+
+    // Create map for quick lookup
+    const existingMap = new Map();
+    existingAssigned.forEach((a) => {
+      const uid = a.userId.toString();
+      existingMap.set(uid, a);
     });
 
-    // Build merged array, preserving existing completion meta if present
-    const merged = normalized.map((a) => {
-      const uid = a.userId.toString ? a.userId.toString() : String(a.userId);
-      const prev = existingMap.get(uid);
-      if (prev) {
-        // preserve completion state for existing user
-        return {
-          userId: a.userId,
+    const finalAssigned = [];
+
+    // ✅ Add or preserve users
+    for (const a of normalized) {
+      const uid = a.userId.toString();
+
+      if (existingMap.has(uid)) {
+        // Preserve existing completion state
+        const prev = existingMap.get(uid);
+        finalAssigned.push({
+          userId: prev.userId,
           isCompleted: prev.isCompleted,
           completedAt: prev.completedAt,
-        };
-      }
-      // new assignment -> isCompleted false
-      newlyAddedUserIds.push(uid);
-      return { userId: a.userId, isCompleted: false, completedAt: null };
-    });
+        });
 
-    updates.assignedTo = merged;
+        // Remove from map so we know it's handled
+        existingMap.delete(uid);
+      } else {
+        // New user
+        newlyAddedUserIds.push(uid);
+        finalAssigned.push({
+          userId: a.userId,
+          isCompleted: false,
+          completedAt: null,
+        });
+      }
+    }
+
+    // ✅ OPTIONAL: keep old users (if you DON'T want removal)
+    for (const [, remainingUser] of existingMap) {
+      finalAssigned.push(remainingUser);
+    }
+
+    updates.assignedTo = finalAssigned;
   }
 
-  // Perform update and populate
+  // Update task
   const task = await Task.findByIdAndUpdate(id, updates, { new: true })
     .populate("createdBy", "firstname lastname email")
     .populate("assignedTo.userId", "firstname lastname email");
 
-  // Notify newly assigned users only
+  // Notify new users
   if (newlyAddedUserIds.length) {
     await sendAndSaveNotification({
       toUserIds: newlyAddedUserIds,
@@ -259,7 +277,7 @@ exports.deleteTask = asyncHandler(async (req, res) => {
       }
     }
 
-    return res.json({ message: "Task deleted and notifications updated" });
+    return res.json({ message: "Task has been deleted successfully" });
   } catch (err) {
     // abort and close session on error
     try {
@@ -300,7 +318,10 @@ exports.submitSolution = asyncHandler(async (req, res) => {
 
     // ensure user is assigned
     const assignedEntry = task.assignedTo.find(
-      (a) => a.userId.toString() === userId.toString()
+      (a) => {
+        const id = a.userId._id ? a.userId._id.toString() : a.userId.toString();
+        return id === userId.toString();
+      }
     );
     if (!assignedEntry) {
       await session.abortTransaction();
@@ -359,7 +380,33 @@ exports.submitSolution = asyncHandler(async (req, res) => {
       relatedTaskId: task._id,
     });
 
-    return res.json({ task });
+    // Re-check the task after commit but using the data we have
+    const updatedTask = task.toObject();
+    const assigned =
+      updatedTask.assignedTo.find(
+        (a) => {
+          const id = a.userId._id ? a.userId._id.toString() : a.userId.toString();
+          return id === userId.toString();
+        }
+      ) || {};
+    const submission =
+      (updatedTask.submissions || []).find(
+        (s) => {
+          const id = s.userId._id ? s.userId._id.toString() : s.userId.toString();
+          return id === userId.toString();
+        }
+      ) || null;
+
+    return res.json({ 
+      task: {
+        ...updatedTask,
+        myAssignmentStatus: {
+          isCompleted: assigned.isCompleted || false,
+          completedAt: assigned.completedAt || null,
+        },
+        mySubmission: submission
+      }
+    });
   } catch (err) {
     await session.abortTransaction();
     session.endSession();
@@ -378,11 +425,19 @@ exports.getMyTasks = asyncHandler(async (req, res) => {
   const annotated = tasks.map((t) => {
     const assigned =
       t.assignedTo.find(
-        (a) => a.userId.toString() === req.user._id.toString()
+        (a) => {
+          // handles both populated and unpopulated userId
+          const id = a.userId._id ? a.userId._id.toString() : a.userId.toString();
+          return id === req.user._id.toString();
+        }
       ) || {};
+    
     const submission =
       (t.submissions || []).find(
-        (s) => s.userId.toString() === req.user._id.toString()
+        (s) => {
+          const id = s.userId._id ? s.userId._id.toString() : s.userId.toString();
+          return id === req.user._id.toString();
+        }
       ) || null;
 
     return {

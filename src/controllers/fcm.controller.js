@@ -14,7 +14,7 @@ exports.saveToken = asyncHandler(async (req, res) => {
     await user.save();
   }
 
-  res.json({ message: "Token saved",Token:token});
+  res.json({ message: "FCM token saved successfully" });
 });
 
 exports.removeToken = asyncHandler(async (req, res) => {

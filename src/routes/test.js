@@ -4,6 +4,23 @@ const admin = require("firebase-admin");
 const token =
   "fK5AN9WQzEbwrID0W6ksoL:APA91bFh4F43XLRP_GblHnRdT9WRxGcUqblEuK8VIkEvdiC4WO9h-wg9GMxwn1a55TVRdKUUfGPDaLjj8LXtUG7oraEx_NzLOCEJsTV74jiV2Fzgf5So8Ms";
 
+/**
+ * @swagger
+ * tags:
+ *   name: Testing
+ *   description: Internal testing and utility endpoints
+ */
+
+/**
+ * @swagger
+ * /test-fcm:
+ *   get:
+ *     summary: Test FCM notification delivery
+ *     tags: [Testing]
+ *     responses:
+ *       200:
+ *         description: Success
+ */
 router.get("/test-fcm", async (req, res) => {
   try {
     token; // replace with a real FCM token from a device
